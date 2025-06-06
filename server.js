@@ -1,9 +1,10 @@
 require('dotenv').config();
 const app = require('./src/app');
 
-const PORT = process.env.PORT || 3000;
+// Usa SOLO el puerto que proporciona Railway (no pongas valor por defecto)
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor WhatsApp Bot corriendo en puerto ${PORT}`);
-    console.log(`📱 Webhook URL: http://localhost:${PORT}/webhook`);
+    console.log(`📱 Webhook URL: https://whatsappapi-production-90d5.up.railway.app/webhook`);
 });
