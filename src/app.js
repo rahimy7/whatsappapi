@@ -4,12 +4,6 @@ const webhookController = require('./controllers/webhook.controller');
 
 const app = express();
 
-// Middleware para saltar la advertencia de ngrok
-app.use((req, res, next) => {
-    res.setHeader('ngrok-skip-browser-warning', 'true');
-    next();
-});
-
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -25,9 +19,6 @@ app.get('/', (req, res) => {
 // Webhook endpoints
 app.get('/webhook', webhookController.verifyWebhook);
 app.post('/webhook', webhookController.handleWebhook);
-
-// Test endpoint
-app.get('/webhook/test', webhookController.testEndpoint);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
