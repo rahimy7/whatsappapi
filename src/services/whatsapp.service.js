@@ -2,24 +2,33 @@ const axios = require('axios');
 
 class WhatsAppService {
     constructor() {
-        // Valores hardcodeados temporalmente para debugging
         this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '667993026397854';
-        this.token = process.env.WHATSAPP_TOKEN || 'TU_TOKEN_AQUI';
+        this.token = process.env.WHATSAPP_TOKEN;
         this.apiVersion = 'v18.0';
-        this.apiUrl = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}`;
+        this.baseUrl = 'https://graph.facebook.com';
         
         console.log('WhatsApp Service inicializado:');
         console.log('- Phone Number ID:', this.phoneNumberId);
-        console.log('- API URL:', this.apiUrl);
         console.log('- Token configurado:', this.token ? 'Sí' : 'No');
         console.log('- Token length:', this.token?.length);
+        
+        // Configurar axios con timeout y retry
+        this.axiosInstance = axios.create({
+            baseURL: this.baseUrl,
+            timeout: 30000, // 30 segundos
+            headers: {
+                'Authorization': `Bearer ${this.token}`,
+                'Content-Type': 'application/json'
+            }
+        });
     }
 
     // Enviar mensaje de texto simple
     async sendTextMessage(to, message) {
-        console.log(`\n📤 Intentando enviar mensaje a ${to}: "${message}"`);
+        console.log(`\n📤 Intentando enviar mensaje a ${to}`);
+        console.log(`Mensaje: "${message.substring(0, 50)}..."`);
         
-        const url = `${this.apiUrl}/messages`;
+        const url = `/${this.apiVersion}/${this.phoneNumberId}/messages`;
         const data = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
@@ -31,68 +40,46 @@ class WhatsAppService {
             }
         };
         
-        console.log('URL:', url);
-        console.log('Data:', JSON.stringify(data, null, 2));
-        console.log('Token (primeros 20 chars):', this.token.substring(0, 20) + '...');
-        
         try {
-            const response = await axios.post(url, data, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            console.log('Enviando petición a WhatsApp API...');
+            const response = await this.axiosInstance.post(url, data);
             
-            console.log('✅ Mensaje enviado exitosamente:');
-            console.log('Response:', JSON.stringify(response.data, null, 2));
+            console.log('✅ Mensaje enviado exitosamente');
+            console.log('Message ID:', response.data.messages?.[0]?.id);
             return response.data;
             
         } catch (error) {
-            console.error('❌ Error enviando mensaje:');
+            console.error('\n❌ Error enviando mensaje');
             
             if (error.response) {
-                // La petición se hizo y el servidor respondió con un código de error
+                // Error de la API
                 console.error('Status:', error.response.status);
-                console.error('Status Text:', error.response.statusText);
-                console.error('Headers:', error.response.headers);
-                console.error('Data:', JSON.stringify(error.response.data, null, 2));
+                console.error('Error:', JSON.stringify(error.response.data, null, 2));
                 
-                if (error.response.data?.error) {
-                    const err = error.response.data.error;
-                    console.error('\n🔴 Detalles del error de WhatsApp:');
-                    console.error('- Código:', err.code);
-                    console.error('- Subcódigo:', err.error_subcode);
-                    console.error('- Mensaje:', err.message);
-                    console.error('- Tipo:', err.type);
-                    console.error('- Trace ID:', err.fbtrace_id);
-                    
-                    // Errores comunes
-                    if (err.code === 190 || error.response.status === 401) {
-                        console.error('\n⚠️ ERROR DE AUTENTICACIÓN:');
-                        console.error('1. El token ha expirado (los temporales duran 24h)');
-                        console.error('2. El token está mal copiado');
-                        console.error('3. Necesitas generar un nuevo token en Meta');
-                        console.error('\nSOLUCIÓN:');
-                        console.error('- Ve a developers.facebook.com');
-                        console.error('- Tu App > WhatsApp > API Setup');
-                        console.error('- Genera un nuevo token temporal');
-                        console.error('- Actualiza WHATSAPP_TOKEN en Vercel');
-                    } else if (err.code === 100) {
-                        console.error('⚠️ Parámetros inválidos en la petición');
-                    } else if (err.error_subcode === 2018001) {
-                        console.error('⚠️ El número no está registrado en WhatsApp');
-                    }
+                if (error.response.status === 401) {
+                    console.error('\n🔴 ERROR DE AUTENTICACIÓN (401)');
+                    console.error('El token es inválido o ha expirado.');
+                    console.error('Solución: Genera un nuevo token en Meta y actualiza WHATSAPP_TOKEN en Vercel');
+                } else if (error.response.status === 403) {
+                    console.error('\n🔴 ERROR DE PERMISOS (403)');
+                    console.error('No tienes permisos para enviar mensajes.');
+                } else if (error.response.status === 404) {
+                    console.error('\n🔴 ERROR 404');
+                    console.error('Verifica que el Phone Number ID sea correcto:', this.phoneNumberId);
                 }
-            } else if (error.request) {
-                // La petición se hizo pero no se recibió respuesta
-                console.error('❌ No se recibió respuesta de la API');
-                console.error('Request:', error.request);
+                
+            } else if (error.code === 'ECONNABORTED') {
+                console.error('⏱️ Timeout - La petición tardó demasiado');
+            } else if (error.code === 'EPROTO' || error.code === 'ECONNRESET') {
+                console.error('🔌 Error de conexión SSL/TLS');
+                console.error('Esto puede ser un problema temporal con los servidores de Meta');
             } else {
-                // Algo más pasó
-                console.error('❌ Error configurando la petición:', error.message);
+                console.error('Error desconocido:', error.message);
+                console.error('Código:', error.code);
             }
             
-            throw error;
+            // No lanzar el error para que el webhook no falle
+            return null;
         }
     }
 
@@ -100,76 +87,55 @@ class WhatsAppService {
     async sendButtonMessage(to, bodyText, buttons) {
         console.log(`\n📤 Intentando enviar botones a ${to}`);
         
-        try {
-            const response = await axios.post(
-                `${this.apiUrl}/messages`,
-                {
-                    messaging_product: 'whatsapp',
-                    recipient_type: 'individual',
-                    to: to,
-                    type: 'interactive',
-                    interactive: {
-                        type: 'button',
-                        body: {
-                            text: bodyText
-                        },
-                        action: {
-                            buttons: buttons.map((button, index) => ({
-                                type: 'reply',
-                                reply: {
-                                    id: button.id || `button_${index}`,
-                                    title: button.title
-                                }
-                            }))
-                        }
-                    }
+        const url = `/${this.apiVersion}/${this.phoneNumberId}/messages`;
+        const data = {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: to,
+            type: 'interactive',
+            interactive: {
+                type: 'button',
+                body: {
+                    text: bodyText
                 },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.token}`,
-                        'Content-Type': 'application/json'
-                    }
+                action: {
+                    buttons: buttons.slice(0, 3).map((button, index) => ({
+                        type: 'reply',
+                        reply: {
+                            id: button.id || `button_${index}`,
+                            title: button.title.substring(0, 20) // Máximo 20 caracteres
+                        }
+                    }))
                 }
-            );
-            
+            }
+        };
+        
+        try {
+            const response = await this.axiosInstance.post(url, data);
             console.log('✅ Botones enviados exitosamente');
             return response.data;
         } catch (error) {
             console.error('❌ Error enviando botones:', error.response?.data || error.message);
-            throw error;
+            return null;
         }
     }
 
     // Marcar mensaje como leído
     async markAsRead(messageId) {
-        if (!messageId) {
-            console.log('No hay messageId para marcar como leído');
-            return;
-        }
+        if (!messageId) return;
         
-        console.log(`\n👁️ Marcando mensaje ${messageId} como leído`);
+        const url = `/${this.apiVersion}/${this.phoneNumberId}/messages`;
+        const data = {
+            messaging_product: 'whatsapp',
+            status: 'read',
+            message_id: messageId
+        };
         
         try {
-            const response = await axios.post(
-                `${this.apiUrl}/messages`,
-                {
-                    messaging_product: 'whatsapp',
-                    status: 'read',
-                    message_id: messageId
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-            
-            console.log('✅ Marcado como leído');
-            return response.data;
+            await this.axiosInstance.post(url, data);
+            console.log('👁️ Mensaje marcado como leído');
         } catch (error) {
-            console.error('❌ Error marcando como leído:', error.response?.data || error.message);
-            // No lanzar error aquí, solo log
+            console.error('Error marcando como leído:', error.message);
         }
     }
 }

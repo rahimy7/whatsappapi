@@ -19,93 +19,68 @@ const verifyWebhook = (req, res) => {
 
 // Manejar mensajes entrantes (POST)
 const handleWebhook = async (req, res) => {
-    console.log('\n📨 POST /webhook - Mensaje recibido');
-    
     // IMPORTANTE: Responder inmediatamente a WhatsApp
     res.sendStatus(200);
     
     try {
         const body = req.body;
-        console.log('Body completo:', JSON.stringify(body, null, 2));
         
-        if (!body.entry || !body.entry[0]) {
-            console.log('No hay datos de entrada');
+        // Verificar la estructura del mensaje
+        if (!body.entry?.[0]?.changes?.[0]?.value) {
             return;
         }
         
-        const entry = body.entry[0];
-        const changes = entry.changes;
+        const value = body.entry[0].changes[0].value;
         
-        if (!changes || !changes[0]) {
-            console.log('No hay cambios en la entrada');
-            return;
-        }
-        
-        const change = changes[0];
-        const value = change.value;
-        
-        if (!value) {
-            console.log('No hay valor en el cambio');
-            return;
-        }
-        
-        // Verificar si es un mensaje
+        // Procesar mensajes
         if (value.messages && value.messages[0]) {
             const message = value.messages[0];
             const from = message.from;
             const messageId = message.id;
-            const messageType = message.type;
             
-            console.log(`\n💬 Nuevo mensaje:`);
-            console.log(`- De: ${from}`);
-            console.log(`- Tipo: ${messageType}`);
-            console.log(`- ID: ${messageId}`);
+            console.log(`\n💬 Nuevo mensaje de ${from}`);
             
-            // Procesar mensaje de texto
-            if (messageType === 'text' && message.text) {
+            // Solo procesar mensajes de texto por ahora
+            if (message.type === 'text' && message.text) {
                 const text = message.text.body;
-                console.log(`- Texto: "${text}"`);
+                console.log(`Texto: "${text}"`);
                 
-                // Determinar respuesta
+                // Marcar como leído
+                await whatsappService.markAsRead(messageId);
+                
+                // Esperar un poco antes de responder (más natural)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Enviar respuesta simple
                 let responseText = '';
                 
                 if (text.toLowerCase().includes('hola')) {
-                    responseText = '¡Hola! 👋 Bienvenido a nuestro bot de WhatsApp. ¿En qué puedo ayudarte hoy?\n\nEscribe *menu* para ver las opciones disponibles.';
+                    responseText = '¡Hola! 👋 Bienvenido a nuestro servicio de WhatsApp.\n\nEscribe "menu" para ver las opciones disponibles.';
                 } else if (text.toLowerCase() === 'menu') {
-                    responseText = '📋 *MENÚ PRINCIPAL*\n\n' +
-                                 '1️⃣ Ver productos\n' +
-                                 '2️⃣ Hacer pedido\n' +
-                                 '3️⃣ Consultar estado\n' +
-                                 '4️⃣ Soporte\n\n' +
-                                 'Escribe el número de la opción que desees.';
+                    responseText = '📋 *MENÚ PRINCIPAL*\n\n1️⃣ Información\n2️⃣ Precios\n3️⃣ Contacto\n\nResponde con el número de tu elección.';
                 } else if (text === '1') {
-                    responseText = '🛍️ *NUESTROS PRODUCTOS*\n\n' +
-                                 '• Producto A - $10\n' +
-                                 '• Producto B - $20\n' +
-                                 '• Producto C - $30\n\n' +
-                                 'Para ordenar, escribe el nombre del producto.';
+                    responseText = 'ℹ️ *INFORMACIÓN*\n\nSomos una empresa dedicada a brindar los mejores servicios.\n\n¿Necesitas algo más? Escribe "menu"';
+                } else if (text === '2') {
+                    responseText = '💰 *PRECIOS*\n\n• Plan Básico: $10/mes\n• Plan Pro: $25/mes\n• Plan Enterprise: Contactar\n\nEscribe "menu" para más opciones.';
+                } else if (text === '3') {
+                    responseText = '📞 *CONTACTO*\n\n📧 Email: info@empresa.com\n📱 WhatsApp: Este mismo número\n🌐 Web: www.empresa.com\n\nEscribe "menu" para volver.';
                 } else {
-                    responseText = `Recibí tu mensaje: "${text}"\n\nEscribe *menu* para ver las opciones disponibles.`;
+                    responseText = 'No entendí tu mensaje 😅\n\nEscribe "menu" para ver las opciones disponibles.';
                 }
                 
                 // Enviar respuesta
-                try {
-                    await whatsappService.sendTextMessage(from, responseText);
-                    console.log('✅ Respuesta enviada');
-                } catch (error) {
-                    console.error('❌ Error enviando respuesta:', error.message);
-                }
+                await whatsappService.sendTextMessage(from, responseText);
             }
         }
         
-        // Verificar si es un estado de mensaje
+        // Procesar estados de mensajes
         if (value.statuses && value.statuses[0]) {
             const status = value.statuses[0];
             console.log(`📊 Estado: ${status.status} para ${status.recipient_id}`);
         }
         
     } catch (error) {
-        console.error('❌ Error general:', error);
+        console.error('❌ Error en webhook:', error.message);
     }
 };
 
