@@ -67,8 +67,16 @@ class WhatsAppService {
                     console.error('- Trace ID:', err.fbtrace_id);
                     
                     // Errores comunes
-                    if (err.code === 190) {
-                        console.error('⚠️ El token ha expirado o es inválido');
+                    if (err.code === 190 || error.response.status === 401) {
+                        console.error('\n⚠️ ERROR DE AUTENTICACIÓN:');
+                        console.error('1. El token ha expirado (los temporales duran 24h)');
+                        console.error('2. El token está mal copiado');
+                        console.error('3. Necesitas generar un nuevo token en Meta');
+                        console.error('\nSOLUCIÓN:');
+                        console.error('- Ve a developers.facebook.com');
+                        console.error('- Tu App > WhatsApp > API Setup');
+                        console.error('- Genera un nuevo token temporal');
+                        console.error('- Actualiza WHATSAPP_TOKEN en Vercel');
                     } else if (err.code === 100) {
                         console.error('⚠️ Parámetros inválidos en la petición');
                     } else if (err.error_subcode === 2018001) {
