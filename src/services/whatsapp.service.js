@@ -33,6 +33,7 @@ class WhatsAppService {
         
         console.log('URL:', url);
         console.log('Data:', JSON.stringify(data, null, 2));
+        console.log('Token (primeros 20 chars):', this.token.substring(0, 20) + '...');
         
         try {
             const response = await axios.post(url, data, {
@@ -48,19 +49,39 @@ class WhatsAppService {
             
         } catch (error) {
             console.error('❌ Error enviando mensaje:');
-            console.error('Status:', error.response?.status);
-            console.error('Status Text:', error.response?.statusText);
-            console.error('Error Data:', JSON.stringify(error.response?.data, null, 2));
-            console.error('Error Message:', error.message);
             
-            // Log más detalles del error
-            if (error.response?.data?.error) {
-                const err = error.response.data.error;
-                console.error('Error details:');
-                console.error('- Code:', err.error_subcode || err.code);
-                console.error('- Message:', err.message);
-                console.error('- Type:', err.type);
-                console.error('- FB Trace ID:', err.fbtrace_id);
+            if (error.response) {
+                // La petición se hizo y el servidor respondió con un código de error
+                console.error('Status:', error.response.status);
+                console.error('Status Text:', error.response.statusText);
+                console.error('Headers:', error.response.headers);
+                console.error('Data:', JSON.stringify(error.response.data, null, 2));
+                
+                if (error.response.data?.error) {
+                    const err = error.response.data.error;
+                    console.error('\n🔴 Detalles del error de WhatsApp:');
+                    console.error('- Código:', err.code);
+                    console.error('- Subcódigo:', err.error_subcode);
+                    console.error('- Mensaje:', err.message);
+                    console.error('- Tipo:', err.type);
+                    console.error('- Trace ID:', err.fbtrace_id);
+                    
+                    // Errores comunes
+                    if (err.code === 190) {
+                        console.error('⚠️ El token ha expirado o es inválido');
+                    } else if (err.code === 100) {
+                        console.error('⚠️ Parámetros inválidos en la petición');
+                    } else if (err.error_subcode === 2018001) {
+                        console.error('⚠️ El número no está registrado en WhatsApp');
+                    }
+                }
+            } else if (error.request) {
+                // La petición se hizo pero no se recibió respuesta
+                console.error('❌ No se recibió respuesta de la API');
+                console.error('Request:', error.request);
+            } else {
+                // Algo más pasó
+                console.error('❌ Error configurando la petición:', error.message);
             }
             
             throw error;
