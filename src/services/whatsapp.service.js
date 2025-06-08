@@ -46,6 +46,8 @@ class WhatsAppService {
             
             console.log('✅ Mensaje enviado exitosamente');
             console.log('Message ID:', response.data.messages?.[0]?.id);
+            
+            console.log('📬 Respuesta de WhatsApp API:', JSON.stringify(response.data, null, 2));
             return response.data;
             
         } catch (error) {
@@ -79,6 +81,8 @@ class WhatsAppService {
             }
             
             // No lanzar el error para que el webhook no falle
+            
+                console.error('🧨 Error completo:', error.toJSON?.() || error);
             return null;
         }
     }
@@ -113,9 +117,13 @@ class WhatsAppService {
         try {
             const response = await this.axiosInstance.post(url, data);
             console.log('✅ Botones enviados exitosamente');
+            
+            console.log('📬 Respuesta de WhatsApp API:', JSON.stringify(response.data, null, 2));
             return response.data;
         } catch (error) {
             console.error('❌ Error enviando botones:', error.response?.data || error.message);
+            
+                console.error('🧨 Error completo:', error.toJSON?.() || error);
             return null;
         }
     }
