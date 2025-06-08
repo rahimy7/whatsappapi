@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "WHATSAPP_TOKEN": "EAAKHVoxT6IUBOZBbqurZCQVcrwFXCkjFp5ZCYxDO4gW9kJZB7GiZCDOdSADLU29eEwLpPxsMkriIhCbcl6xIKjQ4C7dDjJjMYSCnbCG6bP1VLgZC18imQaAy4PZBfBNyBwb170QYzZCmGIRi3XXJm991yAzZAaa88iIrSmQqSYSFFWjODgP8DVSlPkZBJQ8SmWx1oSyjyzIZCPUPqROvHtX7ZA5syrDW5OYaDwZBwJH9JetNRrZCPJ7Fy5tmsZD",
+    "WHATSAPP_PHONE_NUMBER_ID": "667993026397854",
+    "WHATSAPP_BUSINESS_ACCOUNT_ID": "4442394359314222",
+    "WHATSAPP_VERIFY_TOKEN": "whatsapp-order-token",
+    "META_APP_ID": "711755744667781",
+    "META_APP_SECRET": "your_app_secret_here"
+  }
+}
