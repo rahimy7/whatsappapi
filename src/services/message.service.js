@@ -7,7 +7,8 @@ class MessageService {
         this.userStates = new Map();
     }
 
-    async processMessage({ from, messageBody, messageType, message }) {
+    async processMessage({ from, messageBody, messageType, message }) {        console.log('[📥 PROCESS] Mensaje recibido:', { from, messageType, messageBody });
+
         try {
             // Marcar mensaje como leído
             if (message.id) {
